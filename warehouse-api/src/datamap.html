@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>仓库管理系统 - 数据流图 (DFD)</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding-top: 20px;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        #controls {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        #back-button {
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: none; /* Initially hidden */
+        }
+        #back-button:hover {
+            background-color: #f5f5f5;
+        }
+        h1 {
+            margin: 0;
+        }
+        canvas {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <button id="back-button">&larr; 返回1层数据流图</button>
+        <h1 id="diagram-title">1层数据流图：仓库管理系统</h1>
+    </div>
+    <canvas id="dfd-canvas"></canvas>
+
+    <script>
+        // --- 1. 数据定义 ---
+        // 将您提供的文本描述转换为结构化的JS对象
+        const dfdData = {
+            level1: {
+                title: "1层数据流图：仓库管理系统",
+                entities: [
+                    { id: 'user', text: '用户', type: 'entity' },
+                    { id: 'system', text: '系统', type: 'entity' },
+                ],
+                processes: [
+                    { id: 'p1', text: '用户管理', type: 'process' },
+                    { id: 'p2', text: '商品管理', type: 'process' },
+                    { id: 'p3', text: '入库管理', type: 'process' },
+                    { id: 'p4', text: '出库管理', type: 'process' },
+                    { id: 'p5', text: '库存管理', type: 'process' },
+                ],
+                stores: [
+                    { id: 's1', text: '用户表', type: 'store' },
+                    { id: 's2', text: '商品表', type: 'store' },
+                    { id: 's3', text: '入库记录表', type: 'store' },
+                    { id: 's4', text: '出库记录表', type: 'store' },
+                    { id: 's5', text: '系统日志表', type: 'store' },
+                    { id: 's6', text: '系统设置表', type: 'store' }, // Though not explicitly in L1 flows, it's a core store.
+                ],
+                flows: [
+                    { from: 'user', to: 'p1', label: '登录/角色管理请求' },
+                    { from: 'p1', to: 's1', label: '读/写用户信息' },
+                    { from: 'user', to: 'p2', label: '商品维护/查询请求' },
+                    { from: 'p2', to: 's2', label: '读/写商品信息' },
+                    { from: 'user', to: 'p3', label: '入库请求' },
+                    { from: 'p3', to: 's3', label: '写入库记录' },
+                    { from: 'user', to: 'p4', label: '出库请求' },
+                    { from: 'p4', to: 's4', label: '写出库记录' },
+                    { from: 'user', to: 'p5', label: '库存操作请求' },
+                    { from: 'p5', to: 's2', label: '读商品' },
+                    { from: 'p5', to: 's3', label: '读入库' },
+                    { from: 'p5', to: 's4', label: '读出库' },
+                    { from: 'p5', to: 's5', label: '写库存变动日志' },
+                ]
+            },
+            level2: {
+                p1: {
+                    title: "2层数据流图：用户管理",
+                    parentProcessId: 'p1',
+                    entities: [{ id: 'user', text: '用户', type: 'entity' }],
+                    processes: [
+                        { id: 'p1.1', text: '用户登录', type: 'process'},
+                        { id: 'p1.2', text: '用户注销', type: 'process'},
+                        { id: 'p1.3', text: '角色管理', type: 'process'},
+                    ],
+                    stores: [{ id: 's1', text: '用户表', type: 'store'}],
+                    flows: [
+                        { from: 'user', to: 'p1.1', label: '用户名/密码' },
+                        { from: 'p1.1', to: 's1', label: '读用户信息' },
+                        { from: 'p1.1', to: 'user', label: '登录响应' },
+                        { from: 'user', to: 'p1.2', label: '注销请求' },
+                        { from: 'p1.2', to: 's1', label: '清除会话' },
+                        { from: 'user', to: 'p1.3', label: '角色管理请求' },
+                        { from: 'p1.3', to: 's1', label: '更新角色' },
+                        { from: 'p1.3', to: 'user', label: '响应' },
+                    ]
+                },
+                p2: {
+                    title: "2层数据流图：商品管理",
+                    parentProcessId: 'p2',
+                    entities: [{ id: 'user', text: '用户', type: 'entity' }],
+                    processes: [
+                        { id: 'p2.1', text: '商品信息添加', type: 'process'},
+                        { id: 'p2.2', text: '商品信息编辑', type: 'process'},
+                        { id: 'p2.3', text: '商品信息删除', type: 'process'},
+                        { id: 'p2.4', text: '商品信息查询', type: 'process'},
+                    ],
+                    stores: [{ id: 's2', text: '商品表', type: 'store'}],
+                    flows: [
+                        { from: 'user', to: 'p2.1', label: '商品信息' },
+                        { from: 'p2.1', to: 's2', label: '插入' },
+                        { from: 'user', to: 'p2.2', label: '商品ID/信息' },
+                        { from: 'p2.2', to: 's2', label: '更新' },
+                        { from: 'user', to: 'p2.3', label: '商品ID' },
+                        { from: 'p2.3', to: 's2', label: '删除' },
+                        { from: 'user', to: 'p2.4', label: '查询条件' },
+                        { from: 'p2.4', to: 's2', label: '读取' },
+                        { from: 'p2.4', to: 'user', label: '查询响应' },
+                    ]
+                },
+                p3: {
+                    title: "2层数据流图：入库管理",
+                    parentProcessId: 'p3',
+                     entities: [{ id: 'user', text: '用户', type: 'entity' }],
+                     processes: [
+                        { id: 'p3.1', text: '入库登记', type: 'process' },
+                        { id: 'p3.2', text: '入库记录查询', type: 'process' },
+                        { id: 'p3.3', text: '入库单据管理', type: 'process' },
+                     ],
+                     stores: [{ id: 's3', text: '入库记录表', type: 'store' }],
+                     flows: [
+                        { from: 'user', to: 'p3.1', label: '入库信息' },
+                        { from: 'p3.1', to: 's3', label: '插入记录' },
+                        { from: 'user', to: 'p3.2', label: '查询条件' },
+                        { from: 'p3.2', to: 's3', label: '读取记录' },
+                        { from: 'p3.2', to: 'user', label: '查询响应' },
+                        { from: 'user', to: 'p3.3', label: '单据管理请求' },
+                        { from: 'p3.3', to: 's3', label: '更新单据' },
+                     ]
+                },
+                p4: {
+                    title: "2层数据流图：出库管理",
+                    parentProcessId: 'p4',
+                    entities: [{ id: 'user', text: '用户', type: 'entity' }],
+                    processes: [
+                        { id: 'p4.1', text: '出库操作', type: 'process' },
+                        { id: 'p4.2', text: '出库记录查询', type: 'process' },
+                        { id: 'p4.3', text: '出库单据管理', type: 'process' },
+                    ],
+                    stores: [{ id: 's4', text: '出库记录表', type: 'store' }],
+                    flows: [
+                        { from: 'user', to: 'p4.1', label: '出库信息' },
+                        { from: 'p4.1', to: 's4', label: '插入记录' },
+                        { from: 'user', to: 'p4.2', label: '查询条件' },
+                        { from: 'p4.2', to: 's4', label: '读取记录' },
+                        { from: 'user', to: 'p4.3', label: '单据管理请求' },
+                        { from: 'p4.3', to: 's4', label: '更新单据' },
+                    ]
+                },
+                p5: {
+                    title: "2层数据流图：库存管理",
+                    parentProcessId: 'p5',
+                    entities: [
+                        { id: 'user', text: '用户', type: 'entity' },
+                        { id: 'system', text: '系统', type: 'entity' }
+                    ],
+                    processes: [
+                        { id: 'p5.1', text: '实时库存查询', type: 'process' },
+                        { id: 'p5.2', text: '库存预警提醒', type: 'process' },
+                        { id: 'p5.3', text: '库存变动记录', type: 'process' },
+                        { id: 'p5.4', text: '库存盘点', type: 'process' },
+                    ],
+                    stores: [
+                        { id: 's2', text: '商品表', type: 'store' },
+                        { id: 's3', text: '入库记录表', type: 'store' },
+                        { id: 's4', text: '出库记录表', type: 'store' },
+                        { id: 's5', text: '系统日志表', type: 'store' },
+                    ],
+                    flows: [
+                        { from: 'user', to: 'p5.1', label: '查询' },
+                        { from: 'p5.1', to: 's2', label: '读' },
+                        { from: 'p5.1', to: 's3', label: '读' },
+                        { from: 'p5.1', to: 's4', label: '读' },
+                        { from: 'p5.1', to: 'user', label: '响应' },
+                        { from: 'system', to: 'p5.2', label: '检查库存' },
+                        { from: 'p5.2', to: 's5', label: '记预警日志' },
+                        { from: 'p5.2', to: 'user', label: '提醒' },
+                        { from: 'user', to: 'p5.4', label: '盘点请求' },
+                        { from: 'p5.4', to: 's2', label: '读' },
+                        { from: 'p5.4', to: 's3', label: '读' },
+                        { from: 'p5.4', to: 's4', label: '读' },
+                    ]
+                }
+            }
+        };
+
+        // --- 2. Canvas Globals ---
+        const canvas = document.getElementById('dfd-canvas');
+        const ctx = canvas.getContext('2d');
+        const backButton = document.getElementById('back-button');
+        const titleElement = document.getElementById('diagram-title');
+
+        let currentView = 'level1';
+        let currentDiagramData = dfdData.level1;
+        let elementPositions = {};
+        
+        const config = {
+            entity: { width: 160, height: 60, color: '#F9E79F', textColor: '#7D6608' },
+            process: { width: 180, height: 70, color: '#D6EAF8', textColor: '#2874A6', clickable: true },
+            store: { width: 180, height: 60, color: '#D5F5E3', textColor: '#1D8348' },
+            padding: 80,
+            colWidth: 350,
+            rowHeight: 150
+        };
+
+
+        // --- 3. Drawing Helpers ---
+        function drawEntity(text, x, y) {
+            const { width, height, color, textColor } = config.entity;
+            ctx.fillStyle = color;
+            ctx.fillRect(x - width / 2, y - height / 2, width, height);
+            ctx.strokeStyle = textColor;
+            ctx.strokeRect(x - width / 2, y - height / 2, width, height);
+            drawText(text, x, y, textColor, '16px');
+        }
+
+        function drawProcess(text, x, y, isClickable) {
+            const { width, height, color, textColor } = config.process;
+            ctx.fillStyle = color;
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(x - width / 2, y - height / 2, width, height, 35);
+            ctx.fill();
+            ctx.stroke();
+
+            // Add hover effect if clickable
+            if (isClickable) {
+                 ctx.fillStyle = '#85C1E9';
+                 ctx.beginPath();
+                 ctx.arc(x + width/2 - 20, y - height/2 + 20, 5, 0, 2 * Math.PI);
+                 ctx.fill();
+            }
+
+            drawText(text, x, y, textColor, '16px');
+        }
+
+        function drawDataStore(text, x, y) {
+            const { width, height, color, textColor } = config.store;
+            const offset = 8;
+            ctx.fillStyle = color;
+            ctx.strokeStyle = textColor;
+            ctx.lineWidth = 1;
+            // Draw two parallel lines
+            ctx.beginPath();
+            ctx.moveTo(x - width / 2 + offset, y - height / 2);
+            ctx.lineTo(x + width / 2, y - height / 2);
+            ctx.moveTo(x - width / 2 + offset, y + height / 2);
+            ctx.lineTo(x + width / 2, y + height / 2);
+            ctx.stroke();
+            // Fill area
+            ctx.fillRect(x - width/2 + offset, y - height/2, width-offset, height);
+
+            drawText(text, x + offset/2, y, textColor, '16px');
+        }
+        
+        function drawText(text, x, y, color, size) {
+            ctx.fillStyle = color;
+            ctx.font = `${size} "PingFang SC", "Microsoft YaHei", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, x, y);
+        }
+
+        function drawArrow(fromPos, toPos, label) {
+            const headlen = 10;
+            const dx = toPos.x - fromPos.x;
+            const dy = toPos.y - fromPos.y;
+            const angle = Math.atan2(dy, dx);
+
+            ctx.strokeStyle = '#555';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(fromPos.x, fromPos.y);
+            ctx.lineTo(toPos.x, toPos.y);
+            ctx.stroke();
+
+            // Arrowhead
+            ctx.beginPath();
+            ctx.moveTo(toPos.x, toPos.y);
+            ctx.lineTo(toPos.x - headlen * Math.cos(angle - Math.PI / 7), toPos.y - headlen * Math.sin(angle - Math.PI / 7));
+            ctx.moveTo(toPos.x, toPos.y);
+            ctx.lineTo(toPos.x - headlen * Math.cos(angle + Math.PI / 7), toPos.y - headlen * Math.sin(angle + Math.PI / 7));
+            ctx.stroke();
+
+            // Label
+            ctx.save();
+            ctx.translate((fromPos.x + toPos.x) / 2, (fromPos.y + toPos.y) / 2);
+            ctx.rotate(angle);
+            if (Math.abs(angle) > Math.PI / 2) {
+                ctx.rotate(Math.PI);
+                ctx.textAlign = 'left';
+            } else {
+                 ctx.textAlign = 'right';
+            }
+           
+            drawText(label, 0, -8, '#444', '13px');
+            ctx.restore();
+        }
+
+        // --- 4. Layout & Main Draw ---
+        function calculateAndDraw() {
+            const data = currentDiagramData;
+            elementPositions = {};
+            const elements = [...(data.entities || []), ...(data.processes || []), ...(data.stores || [])];
+            
+            // Layout Logic (simple column-based)
+            const entities = elements.filter(e => e.type === 'entity');
+            const processes = elements.filter(e => e.type === 'process');
+            const stores = elements.filter(e => e.type === 'store');
+
+            const canvasWidth = config.padding * 2 + config.colWidth * 2;
+            let requiredHeight = config.padding * 2 + Math.max(entities.length, processes.length, stores.length) * config.rowHeight;
+            canvas.width = canvasWidth;
+            canvas.height = requiredHeight;
+
+            const layoutColumn = (items, colIndex) => {
+                const x = config.padding + config.colWidth * colIndex;
+                items.forEach((item, i) => {
+                    const y = (requiredHeight / (items.length + 1)) * (i + 1);
+                    elementPositions[item.id] = { x, y, item };
+                });
+            };
+            
+            layoutColumn(entities, 0);
+            layoutColumn(processes, 1);
+            layoutColumn(stores, 2);
+
+            // Redraw everything
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Flows
+            data.flows.forEach(flow => {
+                const from = elementPositions[flow.from];
+                const to = elementPositions[flow.to];
+                if(from && to) {
+                    // Simple boundary point calculation
+                    const fromPoint = {x: from.x + config[from.item.type].width / 2, y: from.y};
+                    const toPoint = {x: to.x - config[to.item.type].width / 2, y: to.y};
+
+                     if (from.x > to.x) { // right to left
+                        fromPoint.x = from.x - config[from.item.type].width / 2;
+                        toPoint.x = to.x + config[to.item.type].width / 2;
+                    }
+                    if (from.y !== to.y && from.x === to.x) { // vertical
+                        fromPoint.x = from.x;
+                        toPoint.x = to.x;
+                         fromPoint.y = from.y + config[from.item.type].height/2 * (from.y < to.y ? 1 : -1);
+                         toPoint.y = to.y + config[to.item.type].height/2 * (from.y < to.y ? -1 : 1);
+                    }
+
+                    drawArrow(fromPoint, toPoint, flow.label);
+                }
+            });
+
+            // Draw Elements on top of flows
+            Object.values(elementPositions).forEach(pos => {
+                const { item, x, y } = pos;
+                const isClickable = currentView === 'level1' && item.type === 'process';
+                if (item.type === 'entity') drawEntity(item.text, x, y);
+                else if (item.type === 'process') drawProcess(item.text, x, y, isClickable);
+                else if (item.type === 'store') drawDataStore(item.text, x, y);
+            });
+        }
+        
+        // --- 5. Interactivity ---
+        function switchView(view, processId) {
+            currentView = view;
+            if (view === 'level1') {
+                currentDiagramData = dfdData.level1;
+                backButton.style.display = 'none';
+                titleElement.textContent = dfdData.level1.title;
+            } else {
+                currentDiagramData = dfdData.level2[processId];
+                backButton.style.display = 'block';
+                titleElement.textContent = currentDiagramData.title;
+            }
+            calculateAndDraw();
+        }
+
+        canvas.addEventListener('click', (e) => {
+            if (currentView !== 'level1') return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            Object.values(elementPositions).forEach(pos => {
+                if(pos.item.type === 'process') {
+                    const {width, height} = config.process;
+                    if (x > pos.x - width/2 && x < pos.x + width/2 && y > pos.y - height/2 && y < pos.y + height/2) {
+                       if(dfdData.level2[pos.item.id]) {
+                           switchView('level2', pos.item.id);
+                       }
+                    }
+                }
+            });
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+             if (currentView !== 'level1') {
+                canvas.style.cursor = 'default';
+                return;
+             }
+
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            let onProcess = false;
+
+             Object.values(elementPositions).forEach(pos => {
+                if(pos.item.type === 'process') {
+                    const {width, height} = config.process;
+                    if (x > pos.x - width/2 && x < pos.x + width/2 && y > pos.y - height/2 && y < pos.y + height/2) {
+                       onProcess = true;
+                    }
+                }
+            });
+            canvas.style.cursor = onProcess ? 'pointer' : 'default';
+        });
+
+        backButton.addEventListener('click', () => switchView('level1'));
+
+        // --- 6. Initial Load ---
+        window.onload = () => switchView('level1');
+        window.onresize = () => calculateAndDraw();
+
+    </script>
+</body>
+</html>
